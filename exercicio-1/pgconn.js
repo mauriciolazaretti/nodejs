@@ -1,24 +1,44 @@
-var pg = require('pg');
+const { Pool } = require("pg")
 var conf = {
   host: "127.0.0.1",
   database: "nodejs",
   user: "postgres",
   password: "teste",
   port: 5432};
-var conn = new pg.Pool(conf);
-function conectar(conf){
-    if(!conn){
-      try{
-      var pool = new pg.Pool(conf);
-      pool.connect();
-      return pool;
-      }catch(exc){
-        console.log(exc);
+  class DatabaseConnection {
+    constructor() {
+      if (!DatabaseConnection._instance) {
+        DatabaseConnection.connectDB = null;
+        DatabaseConnection._instance = this;
       }
-      
+      return DatabaseConnection._instance;
     }
-    return conn;
-    
-};
-conn = conectar();
-module.exports.getConexao = conn;
+  
+    async connect() {
+      try {
+        return await this._connection();
+      } catch (e) {
+        this.connectDB = null;
+        return await this._connection();
+      }
+    }
+  
+    async _connection() {
+      if (DatabaseConnection.connectDB) {
+          return DatabaseConnection.connectDB;
+      }
+      console.log('entrou aqui');
+      const pool = new Pool({
+        connectionString:
+          "postgres://postgres:teste@127.0.0.1/nodejs",
+      });
+      const client = await pool.connect();
+      DatabaseConnection.connectDB = pool;
+      const res = await client.query("SELECT NOW()");
+      console.log(res.rows[0]);
+      client.release();
+      return pool.connect();
+    }
+  }
+  
+  module.exports = DatabaseConnection;
